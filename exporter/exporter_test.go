@@ -811,3 +811,41 @@ func TestResourceName(t *testing.T) {
 	})
 	assert.Equal(t, "general_policy_all_users", norm)
 }
+
+func TestImportingGlobalInitScripts(t *testing.T) {
+	qa.HTTPFixturesApply(t,
+		[]qa.HTTPFixture{
+			meAdminFixture,
+			{
+				Method:       "GET",
+				Resource:     "/api/2.0/global-init-scripts",
+				ReuseRequest: true,
+				Response:     getJSONObject("test-data/global-init-scripts-list.json"),
+			},
+			{
+				Method:       "GET",
+				Resource:     "/api/2.0/global-init-scripts/C39FD6BAC8088BBC",
+				ReuseRequest: true,
+				Response:     getJSONObject("test-data/global-init-script-get1.json"),
+			},
+			{
+				Method:       "GET",
+				Resource:     "/api/2.0/global-init-scripts/F931E63C248C1D8C",
+				ReuseRequest: true,
+				Response:     getJSONObject("test-data/global-init-script-get2.json"),
+			},
+		}, func(ctx context.Context, client *common.DatabricksClient) {
+			tmpDir := fmt.Sprintf("/tmp/tf-%s", qa.RandomName())
+			defer os.RemoveAll(tmpDir)
+
+			ic := newImportContext(client)
+			ic.Directory = tmpDir
+			ic.listing = "workspace"
+			services, _ := ic.allServicesAndListing()
+			ic.services = services
+			ic.generateDeclaration = true
+
+			err := ic.Run()
+			assert.NoError(t, err)
+		})
+}
